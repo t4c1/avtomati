@@ -12,18 +12,19 @@ class AvtomatiBase():
 
     def getPulls(self):
         """
-        :return: poslje zahtevek na streznik in vrne stevilo potegov, ki so na voljo
+        :return: stevilo potegov, ki so na voljo
         """
         return int(urllib.urlopen(self.url+"pulls").read())
 
     def getNMachines(self):
         """
-        :return: poslje zahtevek na streznik in vrne stevilo avtomatov, ki so na voljo
+        :return: stevilo avtomatov, ki so na voljo
         """
         return int(urllib.urlopen(self.url+"machines").read())
 
     def pull(self, machine):
         """
+        poteg rocice na igralnem avtomatu
         :param machine: st igralnega avtomata
         :return: vrne rezultat potega
         """
