@@ -3,12 +3,9 @@ import sys
 
 
 class Avtomati():
-    def __init__(self, url=""):
+    def __init__(self, url="http://celtra-jackpot.com/1/"):
         self.avtomati = []
-        if url:
-            self.url = url
-        else:
-            self.url = "http://celtra-jackpot.com/1/"
+        self.url = url
         self.req = 0
         self.pulls = 0
         self.nMachines = self.getNMachines()
