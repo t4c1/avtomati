@@ -11,6 +11,8 @@ class Avtomati():
             self.url = "http://celtra-jackpot.com/1/"
         self.req = 0
         self.pulls = 0
+        self.nMachines = self.getNMachines()
+        self.maxPulls = self.getPulls()
 
     def getPulls(self):
         return int(urllib.urlopen(self.url+"pulls").read())
@@ -24,7 +26,7 @@ class Avtomati():
 
 
 if __name__ == "__main__":
-    if sys.argv:
-        Avtomati(sys.argv[0]+"/")
+    if len(sys.argv)>1:
+        Avtomati(sys.argv[1]+"/")
     else:
         Avtomati()
