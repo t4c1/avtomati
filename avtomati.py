@@ -1,7 +1,9 @@
+from __future__ import division
 import urllib
 import sys
 import random
 
+testing=1
 
 class AvtomatiBase():
     def __init__(self, url="http://celtra-jackpot.com/1"):
@@ -18,14 +20,16 @@ class AvtomatiBase():
         """
         :return: stevilo potegov, ki so na voljo
         """
-        return 1000
+        if testing:
+            return 1000
         return int(urllib.urlopen(self.url+"/pulls").read())
 
     def getNMachines(self):
         """
         :return: stevilo avtomatov, ki so na voljo
         """
-        return 2
+        if testing:
+            return 2
         return int(urllib.urlopen(self.url+"/machines").read())
 
     def pull(self, machine,iter=0):
@@ -35,14 +39,15 @@ class AvtomatiBase():
         :return: vrne rezultat potega
         """
         self.pulls += 1
-        chance=random.random()
-        if machine==1:
-            if chance<0.4:
-                return 1
-        elif machine==2:
-            if chance<0.6:
-                return 1
-        return 0
+        if testing:
+            chance=random.random()
+            if machine==1:
+                if chance<0.4:
+                    return 1
+            elif machine==2:
+                if chance<0.6:
+                    return 1
+            return 0
 
         url = "%s/%d/%d" % (self.url, machine, self.pulls)
         #print url
@@ -64,13 +69,20 @@ class Avtomati(AvtomatiBase):
 
     def start(self):
         for i in xrange(self.maxPulls):
-            machine = self.choose()
+            machine = max(self.machines, key=self.weight)
             self.machines[machine[0]][2] += 1
             if self.pull(machine[0]+1):
                 self.machines[machine[0]][1] += 1
 
-    def choose(self):
-        return max(self.machines, key=lambda x: x[1])
+    def weight(self,x):
+        #TODO: ugibanje spremembe verjetnosti
+        n,successful,all=x
+        if all==0:
+            all=0.1
+        success_rate = successful / all
+        end_f=self.pulls/self.maxPulls
+        inaccurate_f=1/all**0.5
+        return success_rate + inaccurate_f
 
 
 def run():
@@ -84,7 +96,7 @@ def test():
     for i in range(10):
         a=Avtomati("http://celtra-jackpot.com/%d" %(i+1,))
         print a.maxPulls,a.nMachines
-        print a.machines
+        print [(s/al,s,al) for n,s,al in a.machines]
         print
 
 
