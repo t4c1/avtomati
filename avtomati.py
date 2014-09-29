@@ -1,5 +1,6 @@
 import urllib
 import sys
+import random
 
 
 class AvtomatiBase():
@@ -17,30 +18,48 @@ class AvtomatiBase():
         """
         :return: stevilo potegov, ki so na voljo
         """
+        return 1000
         return int(urllib.urlopen(self.url+"/pulls").read())
 
     def getNMachines(self):
         """
         :return: stevilo avtomatov, ki so na voljo
         """
+        return 2
         return int(urllib.urlopen(self.url+"/machines").read())
 
-    def pull(self, machine):
+    def pull(self, machine,iter=0):
         """
         poteg rocice na igralnem avtomatu
         :param machine: st igralnega avtomata
         :return: vrne rezultat potega
         """
         self.pulls += 1
+        chance=random.random()
+        if machine==1:
+            if chance<0.4:
+                return 1
+        elif machine==2:
+            if chance<0.6:
+                return 1
+        return 0
+
         url = "%s/%d/%d" % (self.url, machine, self.pulls)
-        print url
-        return int(urllib.urlopen(url).read())
+        #print url
+        try:
+            return int(urllib.urlopen(url).read())
+        except IOError,err:
+            if err[0]==10060 and iter<3: #3 poskusi, ce pride do napake pri povezavi na streznik
+                return self.pull(machine,iter+1)
+            else:
+                #print err[0],err[1],err
+                raise
+
 
 
 class Avtomati(AvtomatiBase):
     def __init__(self, url="http://celtra-jackpot.com/1"):
         AvtomatiBase.__init__(self, url)
-        print self.nMachines,self.maxPulls,self.machines
         self.start()
 
     def start(self):
@@ -54,9 +73,22 @@ class Avtomati(AvtomatiBase):
         return max(self.machines, key=lambda x: x[1])
 
 
-if __name__ == "__main__":
+def run():
     if len(sys.argv) > 1:
         a = Avtomati(sys.argv[1])
     else:
-        a = Avtomati()
-    print a.machines
+        a = Avtomati("http://celtra-jackpot.com/1")
+    return a
+
+def test():
+    for i in range(10):
+        a=Avtomati("http://celtra-jackpot.com/%d" %(i+1,))
+        print a.maxPulls,a.nMachines
+        print a.machines
+        print
+
+
+if __name__ == "__main__":
+    test()
+
+
