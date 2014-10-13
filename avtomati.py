@@ -70,6 +70,15 @@ class AvtomatiBase():
 class Avtomati(AvtomatiBase):
     def __init__(self, url="http://celtra-jackpot.com/1"):
         AvtomatiBase.__init__(self, url)
+        #konstante algoritma
+        self.run_factor=0.1
+        self.innac_factor=0.5
+        self.last_len=10
+        self.rate_w=1
+        self.innac_w=1
+        self.run_w=1
+        self.last_w=1
+
         self.start()
 
     def start(self):
@@ -87,11 +96,25 @@ class Avtomati(AvtomatiBase):
         successful=sum(x[1])
         if all==0:
             all=0.1
-        success_rate = successful / all
-        end_f=self.pulls/self.maxPulls
-        inaccurate_f=1/all**0.5
-        return success_rate + inaccurate_f
 
+        rate = successful / all  #delez uspesnih
+        last_rate=sum(x[1][:self.last_len])/self.last_len if len(x[1])>self.last_len else rate  #delez uspesnih med nekaj zadnjimi otegi
+        running_avg=0.5  #tekoce povprecje uspesnih
+        for i in x[1]:
+            running_avg=running_avg*self.run_factor+(1-self.run_factor)*i
+        inacc=1/all**self.innac_factor  #faktor nenatancnosti
+        return rate*self.rate_w + inacc*self.innac_w + running_avg*self.run_w + last_rate*self.last_w
+
+
+def makeTestCase():
+    machines=[] #[[[zacetek obmocja,verjetnost uspesnega potega] ... naslednje obmocje] ... naslednji avtomat]
+    cases=random.randint(500,3000)
+    for i in range(random.randint(2,10)):
+        machines.append([])
+        n=random.randint(1,cases//200)
+        for j in range(n):
+            machines[-1].append([j*cases//n,random.random()])
+    return cases,machines
 
 def run():
     if len(sys.argv) > 1:
@@ -103,29 +126,29 @@ def run():
 def test():
     global testing,testing_pulls,testing_machines
     testing=1
-    testing_pulls,testing_machines=makeTestCase()
-    for i in range(3):
-        a=Avtomati("http://celtra-jackpot.com/%d" %(i+1,))
-        print "potegov:",a.maxPulls,", avtomatov:",a.nMachines
-        for (n,s),machine in zip(a.machines,testing_machines):
-            print "%5d %5d  %.3f   %s"%(sum(s),len(s),sum(s)/len(s),str(machine))
-        #print [(sum(s)/len(s),sum(s),len(s)) for n,s in a.machines]
-        #print testing_machines
-        print "uspesnih:", sum([sum(s) for n,s in a.machines])
-        print
+    for case in range(3):
+        testing_pulls,testing_machines=makeTestCase()
+        configs=[{"run_factor":0.1,"innac_factor":0.3,"last_len":10,"rate_w":0,"innac_w":2,"run_w":0,"last_w":0}]
+        for config in configs:
+            for i in range(3):
+                a=Avtomati("http://celtra-jackpot.com/%d" %(i+1,))
+                a.run_factor=config["run_factor"]
+                a.innac_factor=config["innac_factor"]
+                a.last_len=config["last_len"]
+                a.rate_w=config["rate_w"]
+                a.innac_w=config["innac_w"]
+                a.run_w=config["run_w"]
+                a.last_w=config["last_w"]
+                print "potegov:",a.maxPulls,", avtomatov:",a.nMachines
+                for (n,s),machine in zip(a.machines,testing_machines):
+                    print "%5d %5d  %.3f   %s"%(sum(s),len(s),sum(s)/len(s) if len(s) else -1,str(machine))
+                print "uspesnih:", sum([sum(s) for n,s in a.machines])
+                print
+            print "*"*30
+        print "#"*50
 
-
-def makeTestCase():
-    machines=[]
-    cases=random.randint(500,3000)
-    for i in range(random.randint(2,10)):
-        machines.append([])
-        n=random.randint(1,cases//200)
-        for j in range(n):
-            machines[-1].append([j*cases//n,random.random()])
-    return cases,machines
 
 if __name__ == "__main__":
-    a=test()
+    test()
 
 
