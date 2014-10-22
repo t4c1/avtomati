@@ -3,9 +3,10 @@ import urllib
 import sys
 import random
 
-testing=1
-testing_pulls=0
-testing_machines=[]
+testing = 1
+testing_pulls = 0
+testing_machines = []
+
 
 class AvtomatiBase():
     def __init__(self, url="http://celtra-jackpot.com/1"):
@@ -34,7 +35,7 @@ class AvtomatiBase():
             return len(testing_machines)
         return int(urllib.urlopen(self.url+"/machines").read())
 
-    def pull(self, machine,iter=0):
+    def pull(self, machine, iter=0):
         """
         poteg rocice na igralnem avtomatu
         :param machine: st igralnega avtomata
@@ -42,11 +43,11 @@ class AvtomatiBase():
         """
         self.pulls += 1
         if testing:
-            roll=random.random()
-            prev=0
+            roll = random.random()
+            prev = 0
             for start, chance in testing_machines[machine-1]:
-                if self.pulls<start:
-                    prev=chance
+                if self.pulls < start:
+                    prev = chance
                 else:
                     if roll<chance:
                         return 1
@@ -59,25 +60,26 @@ class AvtomatiBase():
         try:
             return int(urllib.urlopen(url).read())
         except IOError,err:
-            if err[0]==10060 and iter<3: #3 poskusi, ce pride do napake pri povezavi na streznik
-                return self.pull(machine,iter+1)
+            if err[0] == 10060 and iter < 3:  # 3 poskusi, ce pride do napake pri povezavi na streznik
+                return self.pull(machine, iter+1)
             else:
                 #print err[0],err[1],err
                 raise
-
 
 
 class Avtomati(AvtomatiBase):
     def __init__(self, url="http://celtra-jackpot.com/1"):
         AvtomatiBase.__init__(self, url)
         #konstante algoritma
-        self.run_factor=0.1
-        self.innac_factor=0.5
-        self.last_len=10
-        self.rate_w=1
-        self.innac_w=1
-        self.run_w=1
-        self.last_w=1
+        self.run_factor = 0.1
+        self.run_factor2 = 0.2
+        self.innac_factor = 0.5
+        self.last_len = 10
+        self.rate_w = 1
+        self.innac_w = 1
+        self.run_w = 1
+        self.run_w2 = 1
+        self.last_w = 1
 
         self.start()
 
@@ -86,24 +88,26 @@ class Avtomati(AvtomatiBase):
         for i in xrange(self.maxPulls):
             machine = max(self.machines, key=self.weight)
             ##self.machines[machine[0]][2] += 1
-            res=self.pull(machine[0]+1)
+            res = self.pull(machine[0]+1)
             self.machines[machine[0]][1].append(res)
                 ##self.machines[machine[0]][1] += 1
 
-    def weight(self,x):
+    def weight(self, x):
         #TODO: ugibanje spremembe verjetnosti
-        all=len(x[1])
-        successful=sum(x[1])
-        if all==0:
-            all=0.1
+        all = len(x[1])
+        successful = sum(x[1])
+        if all == 0:
+            all = 0.1
 
         rate = successful / all  #delez uspesnih
-        last_rate=sum(x[1][:self.last_len])/self.last_len if len(x[1])>self.last_len else rate  #delez uspesnih med nekaj zadnjimi otegi
-        running_avg=0.5  #tekoce povprecje uspesnih
+        last_rate = sum(x[1][:self.last_len])/self.last_len if len(x[1]) > self.last_len else rate  #delez uspesnih med nekaj zadnjimi potegi
+        running_avg=0.5  # tekoce povprecje uspesnih
+        running_avg2=0.5  # "hitrejse" tekoce povprecje
         for i in x[1]:
-            running_avg=running_avg*self.run_factor+(1-self.run_factor)*i
-        inacc=1/all**self.innac_factor  #faktor nenatancnosti
-        return rate*self.rate_w + inacc*self.innac_w + running_avg*self.run_w + last_rate*self.last_w
+            running_avg=running_avg*(1-self.run_factor)+self.run_factor*i
+            running_avg2=running_avg2*(1-self.run_factor2)+self.run_factor2*i
+        inacc=1 / all ** self.innac_factor  #faktor nenatancnosti
+        return rate*self.rate_w + inacc*self.innac_w + running_avg*self.run_w + running_avg2*self.run_w2 + last_rate*self.last_w
 
 
 def makeTestCase():
@@ -128,7 +132,10 @@ def test():
     testing=1
     for case in range(3):
         testing_pulls,testing_machines=makeTestCase()
-        configs=[{"run_factor":0.1,"innac_factor":0.3,"last_len":10,"rate_w":0,"innac_w":2,"run_w":0,"last_w":0}]
+        configs=[{"run_factor":0.1,"run_factor2":0.2,"innac_factor":0.3,"last_len":10,"rate_w":0,"innac_w":2,"run_w":0,"last_w":0}]
+        for n in range(-2, 3):  # naredimo testne primere
+            if n!=0:
+                configs.append({i:configs[0][i]*1.1**n for i in configs[0]})
         for config in configs:
             for i in range(3):
                 a=Avtomati("http://celtra-jackpot.com/%d" %(i+1,))
