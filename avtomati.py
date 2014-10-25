@@ -106,7 +106,6 @@ class Avtomati(AvtomatiBase):
             running_avg=running_avg*(1-self.run_factor)+self.run_factor*i
             running_avg2=running_avg2*(1-self.run_factor2)+self.run_factor2*i
         inacc=1 / int(all+1) ** self.innac_factor  #faktor nenatancnosti
-        #print self.rate_w , self.innac_w , self.run_w , self.run_w2 , self.last_w
         return rate*self.rate_w + inacc*self.innac_w + running_avg*self.run_w + running_avg2*self.run_w2 + last_rate*self.last_w
 
 
