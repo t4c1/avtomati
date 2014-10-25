@@ -47,13 +47,12 @@ class AvtomatiBase():
             prev = 0
             for start, chance in testing_machines[machine-1]:
                 if self.pulls < start:
-                    prev = chance
-                else:
-                    if roll<chance:
-                        return 1
-                    else:
-                        return 0
-            return 0
+                    break
+                prev = chance
+            if roll<prev:
+                return 1
+            else:
+                return 0
 
         url = "%s/%d/%d" % (self.url, machine, self.pulls)
         #print url
@@ -128,23 +127,30 @@ def run():
         a = Avtomati("http://celtra-jackpot.com/1")
     return a
 
-def avg(it,key):
+def avg(it,key=lambda x:x):
     return  sum([key(i) for i in it])/len(it)
 
 def test():
     global testing,testing_pulls,testing_machines
     testing=1
-    for case in range(5):
-        testing_pulls,testing_machines=makeTestCase()
-        configs=[{"run_factor":0.1,"run_factor2":0.2,"innac_factor":1,"last_len":10,"rate_w":0,"innac_w":1,"run_w":1,"run_w2":0,"last_w":0},
-                 {"run_factor":0.3,"run_factor2":0.2,"innac_factor":1,"last_len":10,"rate_w":0,"innac_w":1,"run_w":1,"run_w2":0,"last_w":0},
+    ##for caseNum in range(5):
+        ##testing_pulls,testing_machines=makeTestCase
+    for testing_pulls,testing_machines in [
+                                            #[1000,[[[0,0.9],[300,0.7]],[[0,0.8]]]],
+                                            [1000,[[[0,0.2]],[[0,0.8]],[[0,0.9]],[[0,0.15]]]],
+
+                                            ]:
+        configs=[{"run_factor":0.1,"run_factor2":0.2,"innac_factor":2,"last_len":10,"rate_w":0,"innac_w":1,"run_w":1,"run_w2":0,"last_w":0},
+                 #{"run_factor":0.5,"run_factor2":0.2,"innac_factor":2,"last_len":10,"rate_w":0,"innac_w":1,"run_w":1,"run_w2":0,"last_w":0},
                  ]
-        # for n in range(-2, 3):  # naredimo testne konfiguracije
-        #     if n!=0:
-        #         configs.append({i:configs[0][i]*1.1**n for i in configs[0]})
+        for n in range(0,6):  # naredimo testne konfiguracije
+            configs.append({i:configs[0][i] for i in configs[0]})
+            configs[-1]["innac_factor"]=1.25+n/7.0
+        del configs[0]
         for config in configs:
             res=[]
-            for i in range(5):
+            for i in range(1000):
+                print i,
                 a=Avtomati("http://celtra-jackpot.com/%d" %(i+1,))
                 a.run_factor=config["run_factor"]
                 a.run_factor=config["run_factor2"]
@@ -157,14 +163,15 @@ def test():
                 a.last_w=config["last_w"]
                 a.start()
                 res.append(a)
+            print "\n",config
             print "potegov:",avg(res,lambda a: a.maxPulls),", avtomatov:",a.nMachines
             print "uspesnih:", sum([sum(s) for n,s in sum([i.machines for i in res],[])])/len(res)
             m=[[] for i in a.machines]
             for a in res:
                 for n,i in enumerate(m):
                     i.extend(a.machines[n][1])
-            for s, machine in zip(m,testing_machines):
-                print "%6.1f %6.1f  %.3f   %s"%(sum(s)/len(res),len(s)/len(res),sum(s)/len(s) if len(s) else -1,str(machine))
+            for n,(s, machine) in enumerate(zip(m,testing_machines)):
+                print "%6.1f %6.1f  %.3f %.3f    %s"%(sum(s)/len(res),len(s)/len(res),sum(s)/len(s) if len(s) else -1,avg([i.weight(i.machines[n]) for i in res]),str(machine))#, a.machines[n]
             print "*"*50, "naslednja konfiguracija","*"*50
         print "#"*50, "naslednji primer", "#"*50
 
