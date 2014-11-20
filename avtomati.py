@@ -14,7 +14,7 @@ class AvtomatiBase():
         self.pulls = 0  # koliko potegov smo ze izvedli
         self.nMachines = self.getNMachines()
         self.maxPulls = self.getPulls()
-        self.machines = [[i,[]] for i in range(self.nMachines)]  # naredimo seznam oblike[[<zap st.>,[seznam vseh potegov]], <naslednji avtomat> ...]
+        self.machines = [[i,[],0.5,0] for i in range(self.nMachines)]  # naredimo seznam oblike[[<zap st.>,[seznam vseh potegov],trenutna verjetnost,zaporednih neizbir], <naslednji avtomat> ...]
 
     def start(self):
         pass
@@ -45,6 +45,7 @@ class AvtomatiBase():
         if testing:
             roll = random.random()
             prev = 0
+            #print testing_machines[machine-1]
             for start, chance in testing_machines[machine-1]:
                 if self.pulls < start:
                     break
@@ -79,6 +80,9 @@ class Avtomati(AvtomatiBase):
         self.run_w = 1
         self.run_w2 = 1
         self.last_w = 1
+        self.unlucky_factor=0.5
+        self.unlucky_w=0.2
+        self.faster_factor=2
 
         #self.start()
 
@@ -87,6 +91,10 @@ class Avtomati(AvtomatiBase):
         for i in xrange(self.maxPulls):
             machine = max(self.machines, key=self.weight)
             ##self.machines[machine[0]][2] += 1
+            machine[3]=0
+            for m in self.machines:
+                if m!=machine:
+                    m[3]+=1
             res = self.pull(machine[0]+1)
             self.machines[machine[0]][1].append(res)
                 ##self.machines[machine[0]][1] += 1
@@ -102,11 +110,13 @@ class Avtomati(AvtomatiBase):
         last_rate = sum(x[1][:self.last_len])/self.last_len if len(x[1]) > self.last_len else rate  #delez uspesnih med nekaj zadnjimi potegi
         running_avg=0.5  # tekoce povprecje uspesnih
         running_avg2=0.5  # "hitrejse" tekoce povprecje
-        for i in x[1]:
-            running_avg=running_avg*(1-self.run_factor)+self.run_factor*i
-            running_avg2=running_avg2*(1-self.run_factor2)+self.run_factor2*i
+        rfm=10/(-x[3]-(10/(self.faster_factor-1)))+self.faster_factor
+        for result in x[1]:
+            running_avg=running_avg*(1-(self.run_factor*rfm))+(self.run_factor*rfm)*result
+            #running_avg2=running_avg2*(1-self.run_factor2)+self.run_factor2*result
         inacc=1 / int(all+1) ** self.innac_factor  #faktor nenatancnosti
-        return rate*self.rate_w + inacc*self.innac_w + running_avg*self.run_w + running_avg2*self.run_w2 + last_rate*self.last_w
+        unlucky=x[3]**self.unlucky_factor
+        return rate*self.rate_w + inacc*self.innac_w + running_avg*self.run_w + running_avg2*self.run_w2 + last_rate*self.last_w + unlucky*self.unlucky_w
 
 
 def makeTestCase():
@@ -136,23 +146,27 @@ def test():
         ##testing_pulls,testing_machines=makeTestCase
     for testing_pulls,testing_machines in [
                                             #[1000,[[[0,0.9],[300,0.7]],[[0,0.8]]]],
-                                            [1000,[[[0,0.2]],[[0,0.8]],[[0,0.9]],[[0,0.15]]]],
+                                            [1000,[[[0,0.3], [100,0.9]], [[0,0.7]], [[0,0.5]], [[0,0.1],[800,1]], ]],
+                                            #[1000,[[[0,0.2]],[[0,0.8]],[[0,0.9]],[[0,0.15]]]],
 
-                                            ]:
-        configs=[{"run_factor":0.1,"run_factor2":0.2,"innac_factor":2,"last_len":10,"rate_w":0,"innac_w":1,"run_w":1,"run_w2":0,"last_w":0},
+                                            ]: #konfiguracije avtomatov
+        configs=[{"run_factor":0.3,"run_factor2":0.1,"innac_factor":2,"last_len":10,"rate_w":0,"innac_w":0,"run_w":1,"run_w2":0,"last_w":0,"unlucky_factor":0.42,"unlucky_w":0.05,"faster_factor":2},
                  #{"run_factor":0.5,"run_factor2":0.2,"innac_factor":2,"last_len":10,"rate_w":0,"innac_w":1,"run_w":1,"run_w2":0,"last_w":0},
                  ]
-        for n in range(0,6):  # naredimo testne konfiguracije
+        for n in range(0,10):  # naredimo testne konfiguracije
             configs.append({i:configs[0][i] for i in configs[0]})
-            configs[-1]["innac_factor"]=1.25+n/7.0
+            #configs[-1]["run_factor"]=0.15+n/35.0
+            #configs[-1]["unlucky_w"]=0.01+n/200
+            #configs[-1]["unlucky_factor"]=0.3+n/50
+            #configs[-1]["faster_factor"]=1.1+n/3
         del configs[0]
         for config in configs:
             res=[]
-            for i in range(1000):
+            for i in range(100): #st poizkusov s posamezno konfiguracijo
                 print i,
                 a=Avtomati("http://celtra-jackpot.com/%d" %(i+1,))
                 a.run_factor=config["run_factor"]
-                a.run_factor=config["run_factor2"]
+                a.run_factor2=config["run_factor2"]
                 a.innac_factor=config["innac_factor"]
                 a.last_len=config["last_len"]
                 a.rate_w=config["rate_w"]
@@ -160,17 +174,21 @@ def test():
                 a.run_w=config["run_w"]
                 a.run_w2=config["run_w2"]
                 a.last_w=config["last_w"]
+                a.unlucky_factor=config["unlucky_factor"]
+                a.unlucky_w=config["unlucky_w"]
+                a.faster_factor=config["faster_factor"]
                 a.start()
                 res.append(a)
             print "\n",config
             print "potegov:",avg(res,lambda a: a.maxPulls),", avtomatov:",a.nMachines
-            print "uspesnih:", sum([sum(s) for n,s in sum([i.machines for i in res],[])])/len(res)
+            print "uspesnih:", sum([sum(s) for n,s,v,u in sum([i.machines for i in res],[])])/len(res)
             m=[[] for i in a.machines]
             for a in res:
                 for n,i in enumerate(m):
                     i.extend(a.machines[n][1])
+            print "uspesnih potegov razmerje utez"
             for n,(s, machine) in enumerate(zip(m,testing_machines)):
-                print "%6.1f %6.1f  %.3f %.3f    %s"%(sum(s)/len(res),len(s)/len(res),sum(s)/len(s) if len(s) else -1,avg([i.weight(i.machines[n]) for i in res]),str(machine))#, a.machines[n]
+                print "%6.1f  %6.1f   %.3f    %.3f    %s"%(sum(s)/len(res),len(s)/len(res),sum(s)/len(s) if len(s) else -1,avg([i.weight(i.machines[n]) for i in res]),str(machine)), a.machines[n]
             print "*"*50, "naslednja konfiguracija","*"*50
         print "#"*50, "naslednji primer", "#"*50
 
